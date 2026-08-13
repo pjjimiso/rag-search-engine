@@ -13,8 +13,11 @@ class TestSearchUtils(unittest.TestCase):
         self.assertEqual(processed_text, "yo whaddup this is pat")
 
     def test_tokenize_text(self):
-        tokenized_text = tokenize_text("Yo whaddup, this is Pat!")
-        self.assertEqual(tokenized_text, ["yo", "whaddup", "this", "is", "pat"])
+        """
+        Test text is tokenized into a list of lowercase, stem words with punctuation removed
+        """
+        tokenized_text = tokenize_text("Yo whaddup, this is jumping Pat!", ["is", "this"])
+        self.assertEqual(tokenized_text, ["yo", "whaddup", "jump", "pat"])
 
     def test_has_matching_token_true(self):
         """
@@ -31,6 +34,7 @@ class TestSearchUtils(unittest.TestCase):
         query_tokens = ["notpat"]
         title_tokens = ["this", "is", "pat"]
         self.assertFalse(has_matching_token(query_tokens, title_tokens))
+
 
 if __name__ == "__main__":
     unittest.main()
