@@ -1,13 +1,15 @@
 import string
 
+from nltk.stem import PorterStemmer
+
 
 def search_title(query, movies, stopwords): 
    clean_query = preprocess_text(query)
-   tokenized_query = tokenize_text(clean_query)
+   tokenized_query = tokenize_text(clean_query, stopwords)
    matches = []
    for movie in movies:
       clean_title = preprocess_text(movie["title"])
-      tokenized_title = tokenize_text(clean_title)
+      tokenized_title = tokenize_text(clean_title, stopwords)
       if has_matching_token(tokenized_query, tokenized_title):
          matches.append(movie["title"])
    return matches
@@ -27,9 +29,13 @@ def preprocess_text(text):
    return text
 
 
-def tokenize_text(text):
+def tokenize_text(text, stopwords):
    text = preprocess_text(text)
    tokens = text.split() 
-   filtered_tokens = [x for x in tokens if x != ""]
+   stemmer = PorterStemmer()
+   filtered_tokens = []
+   for token in tokens: 
+      if token != "" and token not in stopwords:
+         filtered_tokens.append(stemmer.stem(token))
    return filtered_tokens
 
