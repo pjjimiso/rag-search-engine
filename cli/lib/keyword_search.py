@@ -1,8 +1,43 @@
 import string
 
 from nltk.stem import PorterStemmer
+from pickle import dump
 
-from .search_utils import STOPWORDS_PATH, load_movies
+from .search_utils import STOPWORDS_PATH, INDEX_PATH, DOCMAP_PATH, Movie, load_movies, setup_cache
+
+
+class InvertedIndex: 
+   def __init__(self) -> None: 
+      self.index: dict[str, set[int]] = {}
+      self.docmap: dict[int, Movie] = {}
+
+   def __add_document(self, doc_id: int, text: str) -> None:
+      tokens = tokenize_text(text)
+      for token in tokens: 
+         self.index.setdefault(token, set()).add(doc_id)
+
+   def get_documents(self, term: str) -> list[int]:
+      return sorted(self.index[term])
+
+   def build(self) -> None: 
+      movies = load_movies()
+      for m in movies: 
+         self.__add_document(m["id"], f"{m['title']} {m['description']}")
+         self.docmap[m["id"]] = m
+
+   def save(self) -> None:
+      setup_cache()
+      with open(INDEX_PATH, "wb") as index_file:
+         dump(self.index, index_file)
+      with open(DOCMAP_PATH, "wb") as docmap_file:
+         dump(self.docmap, docmap_file)
+
+
+def build_command() -> InvertedIndex:
+   index = InvertedIndex()
+   index.build()
+   index.save()
+   return index
 
 
 def search_title(query: str) -> list[dict]: 
@@ -49,3 +84,4 @@ def tokenize_text(text: str) -> list[str]:
       if token != "" and token not in STOPWORDS:
          final_tokens.append(stemmer.stem(token))
    return final_tokens
+
