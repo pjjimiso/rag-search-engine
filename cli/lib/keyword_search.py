@@ -1,9 +1,9 @@
 import string
+import pickle
 
 from nltk.stem import PorterStemmer
-from pickle import dump
 
-from .search_utils import STOPWORDS_PATH, INDEX_PATH, DOCMAP_PATH, Movie, load_movies, setup_cache
+from .search_utils import STOPWORDS_PATH, INDEX_PATH, DOCMAP_PATH, MAX_RESULTS, Movie, load_movies, setup_cache
 
 
 class InvertedIndex: 
@@ -17,6 +17,8 @@ class InvertedIndex:
          self.index.setdefault(token, set()).add(doc_id)
 
    def get_documents(self, term: str) -> list[int]:
+      if term not in self.index: 
+         return []
       return sorted(self.index[term])
 
    def build(self) -> None: 
@@ -28,29 +30,33 @@ class InvertedIndex:
    def save(self) -> None:
       setup_cache()
       with open(INDEX_PATH, "wb") as index_file:
-         dump(self.index, index_file)
+         pickle.dump(self.index, index_file)
       with open(DOCMAP_PATH, "wb") as docmap_file:
-         dump(self.docmap, docmap_file)
+         pickle.dump(self.docmap, docmap_file)
+
+   def load(self) -> None: 
+      with open(INDEX_PATH, "rb") as index_file: 
+         self.index = pickle.load(index_file)
+      with open(DOCMAP_PATH, "rb") as docmap_file: 
+         self.docmap = pickle.load(docmap_file)
 
 
-def build_command() -> InvertedIndex:
-   index = InvertedIndex()
+def build_command(index: InvertedIndex) -> None:
    index.build()
    index.save()
-   return index
+   return
 
 
-def search_title(query: str) -> list[dict]: 
-   movies = load_movies()
+def search_title(query: str, index: InvertedIndex) -> list[int]: 
+   index.load() 
    clean_query = preprocess_text(query)
    tokenized_query = tokenize_text(clean_query)
-   matches = []
-   for movie in movies:
-      clean_title = preprocess_text(movie["title"])
-      tokenized_title = tokenize_text(clean_title)
-      if has_matching_token(tokenized_query, tokenized_title):
-         matches.append(movie["title"])
-   return matches
+   matching_indices = []
+   for token in tokenized_query: 
+      matching_indices.extend(index.get_documents(token)[:MAX_RESULTS])
+      if len(matching_indices) >= 5:
+         break
+   return matching_indices
 
 
 def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:

@@ -1,8 +1,8 @@
 import unittest
 
-from pkg.search_utils import preprocess_text
-from pkg.search_utils import tokenize_text
-from pkg.search_utils import has_matching_token
+from cli.lib.keyword_search import preprocess_text
+from cli.lib.keyword_search import tokenize_text
+from cli.lib.keyword_search import has_matching_token
 
 class TestSearchUtils(unittest.TestCase):
     def test_preprocess_text(self):
@@ -16,7 +16,7 @@ class TestSearchUtils(unittest.TestCase):
         """
         Test text is tokenized into a list of lowercase, stem words with punctuation removed
         """
-        tokenized_text = tokenize_text("Yo whaddup, this is jumping Pat!", ["is", "this"])
+        tokenized_text = tokenize_text("Yo whaddup, this is jumping Pat!")
         self.assertEqual(tokenized_text, ["yo", "whaddup", "jump", "pat"])
 
     def test_has_matching_token_true(self):
