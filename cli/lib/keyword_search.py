@@ -25,14 +25,7 @@ class InvertedIndex:
       return sorted(self.index[term])
 
    def get_tf(self, doc_id: int, term: str) -> int:
-      if doc_id not in self.term_frequencies:
-         print(f"doc_id {doc_id} not found in term_frequencies")
-         return 0
-      elif term not in self.term_frequencies[doc_id]:
-         print(f"term '{term}' not found in term_frequencies for doc_id {doc_id}")
-         return 0
-      #return self.term_frequencies.get(doc_id, {}).get(term, 0)
-      return self.term_frequencies[doc_id][term]
+      return self.term_frequencies.get(doc_id, {}).get(term, 0)
 
    def build(self) -> None: 
       movies = load_movies()
