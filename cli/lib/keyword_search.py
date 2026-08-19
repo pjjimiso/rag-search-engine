@@ -111,15 +111,10 @@ def tokenize_term(term: str) -> str:
    return token[0]
 
 
-def get_frequency(doc_id: int, term: str) -> int: 
+def tf_command(doc_id: int, term: str) -> int: 
    index = InvertedIndex()
    index.load()
-   try:
-      tokenized_term = tokenize_term(term)
-   except ValueError as e:
-      print(f"Error tokenizing term '{term}': {e}")
-      return 0
-   return index.get_tf(doc_id, tokenized_term)
+   return index.get_tf(doc_id, tokenize_term(term))
 
 
 
