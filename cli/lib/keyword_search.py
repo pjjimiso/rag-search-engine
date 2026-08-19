@@ -1,25 +1,38 @@
 import string
 import pickle
 
+from collections import Counter
 from nltk.stem import PorterStemmer
 
-from .search_utils import STOPWORDS_PATH, INDEX_PATH, DOCMAP_PATH, MAX_RESULTS, Movie, load_movies, setup_cache
+from .search_utils import STOPWORDS_PATH, INDEX_PATH, DOCMAP_PATH, FREQUENCY_PATH, MAX_RESULTS, Movie, load_movies, setup_cache
 
 
 class InvertedIndex: 
    def __init__(self) -> None: 
       self.index: dict[str, set[int]] = {}
       self.docmap: dict[int, Movie] = {}
+      self.term_frequencies: dict[int, Counter] = {}
 
    def __add_document(self, doc_id: int, text: str) -> None:
       tokens = tokenize_text(text)
       for token in tokens: 
          self.index.setdefault(token, set()).add(doc_id)
+         self.term_frequencies.setdefault(doc_id, Counter())[token] += 1
 
    def get_documents(self, term: str) -> list[int]:
       if term not in self.index: 
          return []
       return sorted(self.index[term])
+
+   def get_tf(self, doc_id: int, term: str) -> int:
+      if doc_id not in self.term_frequencies:
+         print(f"doc_id {doc_id} not found in term_frequencies")
+         return 0
+      elif term not in self.term_frequencies[doc_id]:
+         print(f"term '{term}' not found in term_frequencies for doc_id {doc_id}")
+         return 0
+      #return self.term_frequencies.get(doc_id, {}).get(term, 0)
+      return self.term_frequencies[doc_id][term]
 
    def build(self) -> None: 
       movies = load_movies()
@@ -33,21 +46,27 @@ class InvertedIndex:
          pickle.dump(self.index, index_file)
       with open(DOCMAP_PATH, "wb") as docmap_file:
          pickle.dump(self.docmap, docmap_file)
+      with open(FREQUENCY_PATH, "wb") as frequency_file:
+         pickle.dump(self.term_frequencies, frequency_file)
 
    def load(self) -> None: 
       with open(INDEX_PATH, "rb") as index_file: 
          self.index = pickle.load(index_file)
       with open(DOCMAP_PATH, "rb") as docmap_file: 
          self.docmap = pickle.load(docmap_file)
+      with open(FREQUENCY_PATH, "rb") as frequency_file: 
+         self.term_frequencies = pickle.load(frequency_file)
 
 
-def build_command(index: InvertedIndex) -> None:
+def build_command() -> None:
+   index = InvertedIndex()
    index.build()
    index.save()
    return
 
 
-def search_title(query: str, index: InvertedIndex) -> list[int]: 
+def search_title(query: str) -> list[dict]: 
+   index = InvertedIndex()
    index.load() 
    clean_query = preprocess_text(query)
    tokenized_query = tokenize_text(clean_query)
@@ -90,4 +109,24 @@ def tokenize_text(text: str) -> list[str]:
       if token != "" and token not in STOPWORDS:
          final_tokens.append(stemmer.stem(token))
    return final_tokens
+
+
+def tokenize_term(term: str) -> str: 
+   token = tokenize_text(term)
+   if len(token) > 1: 
+      raise ValueError(f"Expected a single token, but got {len(token)} tokens.")
+   return token[0]
+
+
+def get_frequency(doc_id: int, term: str) -> int: 
+   index = InvertedIndex()
+   index.load()
+   try:
+      tokenized_term = tokenize_term(term)
+   except ValueError as e:
+      print(f"Error tokenizing term '{term}': {e}")
+      return 0
+   return index.get_tf(doc_id, tokenized_term)
+
+
 

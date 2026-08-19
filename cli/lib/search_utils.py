@@ -17,6 +17,7 @@ STOPWORDS_PATH = os.path.join(PROJECT_ROOT, "data", "stopwords.txt")
 CACHE_PATH = os.path.join(PROJECT_ROOT, "cache")
 INDEX_PATH = os.path.join(PROJECT_ROOT, "cache", "index.pkl")
 DOCMAP_PATH = os.path.join(PROJECT_ROOT, "cache", "docmap.pkl")
+FREQUENCY_PATH = os.path.join(PROJECT_ROOT, "cache", "term_frequencies.pkl")
 
 
 def load_movies() -> list[Movie]:
