@@ -1,5 +1,6 @@
 import string
 import pickle
+import math
 
 from collections import Counter
 from nltk.stem import PorterStemmer
@@ -24,8 +25,16 @@ class InvertedIndex:
          return []
       return sorted(self.index[term])
 
-   def get_tf(self, doc_id: int, term: str) -> int:
-      return self.term_frequencies.get(doc_id, {}).get(term, 0)
+   def get_tf(self, doc_id: int, token: str) -> int:
+      return self.term_frequencies.get(doc_id, {}).get(token, 0)
+
+   def get_idf(self, token: str) -> float:
+      return math.log(
+         (len(self.docmap) + 1) / (len(self.get_documents(token)) + 1)
+      )
+
+   def get_tfidf(self, doc_id: int, token: str) -> float:
+      return self.get_tf(doc_id, token) * self.get_idf(token)
 
    def build(self) -> None: 
       movies = load_movies()
@@ -49,6 +58,12 @@ class InvertedIndex:
          self.docmap = pickle.load(docmap_file)
       with open(FREQUENCY_PATH, "rb") as frequency_file: 
          self.term_frequencies = pickle.load(frequency_file)
+
+   def get_bm25_idf(self, term: str) -> float:
+      token = tokenize_single_term(term)
+      N = len(self.docmap)
+      df = len(self.get_documents(token))
+      return math.log((N - df + 0.5) / (df + 0.5) + 1)
 
 
 def build_command() -> None:
@@ -104,7 +119,7 @@ def tokenize_text(text: str) -> list[str]:
    return final_tokens
 
 
-def tokenize_term(term: str) -> str: 
+def tokenize_single_term(term: str) -> str: 
    token = tokenize_text(term)
    if len(token) > 1: 
       raise ValueError(f"Expected a single token, but got {len(token)} tokens.")
@@ -114,7 +129,22 @@ def tokenize_term(term: str) -> str:
 def tf_command(doc_id: int, term: str) -> int: 
    index = InvertedIndex()
    index.load()
-   return index.get_tf(doc_id, tokenize_term(term))
+   return index.get_tf(doc_id, tokenize_single_term(term))
 
 
+def idf_command(term: str) -> float:
+   index = InvertedIndex()
+   index.load()
+   return index.get_idf(tokenize_single_term(term))
 
+
+def tfidf_command(doc_id: int, term: str) -> float:
+   index = InvertedIndex()
+   index.load()
+   return index.get_tfidf(doc_id, tokenize_single_term(term))
+
+
+def bm25_idf_command(term: str) -> float:
+   index = InvertedIndex()
+   index.load()
+   return index.get_bm25_idf(tokenize_single_term(term))
