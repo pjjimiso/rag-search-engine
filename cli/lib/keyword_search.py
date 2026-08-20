@@ -5,7 +5,17 @@ import math
 from collections import Counter
 from nltk.stem import PorterStemmer
 
-from .search_utils import STOPWORDS_PATH, INDEX_PATH, DOCMAP_PATH, FREQUENCY_PATH, MAX_RESULTS, Movie, load_movies, setup_cache
+from .search_utils import (
+   STOPWORDS_PATH,
+   INDEX_PATH,
+   DOCMAP_PATH,
+   FREQUENCY_PATH,
+   MAX_RESULTS,
+   BM25_K1,
+   Movie,
+   load_movies,
+   setup_cache
+)
 
 
 class InvertedIndex: 
@@ -60,10 +70,13 @@ class InvertedIndex:
          self.term_frequencies = pickle.load(frequency_file)
 
    def get_bm25_idf(self, term: str) -> float:
-      token = tokenize_single_term(term)
-      N = len(self.docmap)
-      df = len(self.get_documents(token))
-      return math.log((N - df + 0.5) / (df + 0.5) + 1)
+      n = len(self.docmap)
+      df = len(self.get_documents(tokenize_single_term(term)))
+      return math.log((n - df + 0.5) / (df + 0.5) + 1)
+   
+   def get_bm25_tf(self, doc_id: int, term: str, k1=BM25_K1) -> float:
+      tf = self.get_tf(doc_id, tokenize_single_term(term))
+      return (tf * (k1 + 1) / (tf + k1))
 
 
 def build_command() -> None:
@@ -148,3 +161,10 @@ def bm25_idf_command(term: str) -> float:
    index = InvertedIndex()
    index.load()
    return index.get_bm25_idf(tokenize_single_term(term))
+
+
+def bm25_tf_command(doc_id: int, term: str, k1=BM25_K1) -> float:
+   index = InvertedIndex()
+   index.load()
+   return index.get_bm25_tf(doc_id, tokenize_single_term(term), k1)
+
