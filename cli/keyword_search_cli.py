@@ -1,6 +1,6 @@
 import argparse
 
-from cli.lib.search_utils import BM25_K1
+from cli.lib.search_utils import BM25_K1, BM25_B
 from lib.keyword_search import (
     search_title,
     build_command,
@@ -39,6 +39,7 @@ def main() -> None:
     bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
     bm25_tf_parser.add_argument("term", type=str, help="Term to calculate BM25 TF for")
     bm25_tf_parser.add_argument("k1", type=float, nargs="?", default=BM25_K1, help="BM25 K1 parameter (default: 1.5)")
+    bm25_tf_parser.add_argument("b", type=float, nargs="?", default=BM25_B, help="BM25 B parameter (default: 0.75)")
 
     args = parser.parse_args()
 

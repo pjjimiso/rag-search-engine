@@ -10,8 +10,10 @@ from .search_utils import (
    INDEX_PATH,
    DOCMAP_PATH,
    FREQUENCY_PATH,
+   DOC_LENGTHS_PATH,
    MAX_RESULTS,
    BM25_K1,
+   BM25_B,
    Movie,
    load_movies,
    setup_cache
@@ -23,12 +25,21 @@ class InvertedIndex:
       self.index: dict[str, set[int]] = {}
       self.docmap: dict[int, Movie] = {}
       self.term_frequencies: dict[int, Counter] = {}
+      self.doc_lengths: dict[int, int] = {}
 
    def __add_document(self, doc_id: int, text: str) -> None:
       tokens = tokenize_text(text)
+      token_count = 0
       for token in tokens: 
          self.index.setdefault(token, set()).add(doc_id)
          self.term_frequencies.setdefault(doc_id, Counter())[token] += 1
+         token_count += 1
+      self.doc_lengths[doc_id] = token_count
+
+   def __get_avg_doc_length(self) -> float:
+      if len(self.doc_lengths) == 0:
+         return 0.0
+      return sum(self.doc_lengths.values()) / len(self.doc_lengths)
 
    def get_documents(self, term: str) -> list[int]:
       if term not in self.index: 
@@ -60,6 +71,8 @@ class InvertedIndex:
          pickle.dump(self.docmap, docmap_file)
       with open(FREQUENCY_PATH, "wb") as frequency_file:
          pickle.dump(self.term_frequencies, frequency_file)
+      with open(DOC_LENGTHS_PATH, "wb") as doclengths_file:
+         pickle.dump(self.doc_lengths, doclengths_file)
 
    def load(self) -> None: 
       with open(INDEX_PATH, "rb") as index_file: 
@@ -68,15 +81,26 @@ class InvertedIndex:
          self.docmap = pickle.load(docmap_file)
       with open(FREQUENCY_PATH, "rb") as frequency_file: 
          self.term_frequencies = pickle.load(frequency_file)
+      with open(DOC_LENGTHS_PATH, "rb") as doclengths_file: 
+         self.doc_lengths = pickle.load(doclengths_file)
 
    def get_bm25_idf(self, term: str) -> float:
       n = len(self.docmap)
       df = len(self.get_documents(tokenize_single_term(term)))
       return math.log((n - df + 0.5) / (df + 0.5) + 1)
    
-   def get_bm25_tf(self, doc_id: int, term: str, k1=BM25_K1) -> float:
+   def get_bm25_tf(self, doc_id: int, term: str, k1=BM25_K1, b=BM25_B) -> float:
+      if self.__get_avg_doc_length() == 0:
+         length_norm = 0.0
+      else:
+         length_norm = 1 - b + b * (self.doc_lengths[doc_id] / self.__get_avg_doc_length())
       tf = self.get_tf(doc_id, tokenize_single_term(term))
-      return (tf * (k1 + 1) / (tf + k1))
+      return (tf * (k1 + 1) / (tf + k1 * length_norm))
+
+   def bm25(self, doc_id: int, term: str) -> float:
+      bm25_idf = self.get_bm25_idf(term)
+      bm25_tf = self.get_bm25_tf(doc_id, term)
+      return bm25_idf * bm25_tf
 
 
 def build_command() -> None:
