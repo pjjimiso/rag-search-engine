@@ -1,6 +1,6 @@
 import argparse
 
-from cli.lib.search_utils import BM25_K1, BM25_B, MAX_RESULTS
+from lib.search_utils import BM25_K1, BM25_B, MAX_RESULTS
 from lib.keyword_search import (
     search_title,
     build_command,
