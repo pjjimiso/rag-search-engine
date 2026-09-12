@@ -1,10 +1,19 @@
 import os
+import re
 import numpy as np
-from typing import cast
 
 from sentence_transformers import SentenceTransformer
 
-from .search_utils import EMBEDDINGS_PATH, Movie, setup_cache, load_movies
+from .search_utils import (
+   DEFAULT_CHUNK_SIZE,
+   EMBEDDINGS_PATH,
+   DEFAULT_CHUNK_SIZE,
+   DEFAULT_OVERLAP,
+   Movie,
+   SearchResult,
+   setup_cache,
+   load_movies
+)
 
 
 MODEL = "all-MiniLM-L6-v2"
@@ -51,11 +60,29 @@ class SemanticSearch:
       return self.build_embeddings(documents)
 
 
+   def search(self, query: str, limit: int) -> list[SearchResult]:
+      if self.embeddings is None or len(self.embeddings) == 0:
+         raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+      query_embedding = self.generate_embedding(query)
+      score_map = []
+      for i, doc_embedding in enumerate(self.embeddings):
+         score = cosine_similarity(doc_embedding, query_embedding)
+         score_map.append((score, self.documents[i]))
+
+      score_map.sort(key=lambda t: t[0], reverse=True)
+      results = []
+      for entry in score_map[:limit]:
+         results.append({
+            "score": float(entry[0]),
+            "title": entry[1]["title"],
+            "description": entry[1]["description"]
+         })
+      return results
+
+
 def verify_model() -> None:
    try:
       search = SemanticSearch()
-      # TODO - .model doesn't exist anymore?
-      #print(f"Model loaded: {search.model.model}")
       print(f"Max sequence length: {search.model.max_seq_length}")
    except Exception as e:
       print(f"Error loading model: {e}")
@@ -86,4 +113,54 @@ def verify_embeddings() -> None:
        f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions"
    )
 
+
+def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
+
+
+def chunk_segments(segments: list[str], chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP) -> list[str]:
+   i = 0 
+   chunks = []
+   n_segments = len(segments)
+
+   while i < n_segments:
+      chunked_segment = segments[i : i + chunk_size]
+      if chunks and len(chunked_segment) <= overlap:
+         break
+
+      chunks.append(" ".join(chunked_segment))
+      i += chunk_size - overlap
+
+   return chunks
+
+
+def fixed_length_chunk(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP) -> list[str]:
+   words = text.split()
+   return chunk_segments(words, chunk_size, overlap)
+
+
+def fixed_chunk_text(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP) -> None:
+   chunks = fixed_length_chunk(text, chunk_size, overlap)
+   print(f"Fixed-length chunking {len(text)} characters.")
+   for i, chunk in enumerate(chunks):
+      print(chunk)
+
+
+def semantic_chunk(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP) -> list[str]:
+   sentences = re.split(r"(?<=[.!?])\s+", text)
+   return chunk_segments(sentences, chunk_size, overlap)
+
+
+def semantic_chunk_text(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP) -> None:
+   chunks = semantic_chunk(text, chunk_size, overlap)
+   print(f"Semantically chunking {len(text)} characters.")
+   for i, chunk in enumerate(chunks):
+      print(chunk)
 
