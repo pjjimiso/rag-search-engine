@@ -30,19 +30,7 @@ def main() -> None:
 
 
 def normalize_command(scores: list[int]) -> None: 
-    if not scores or len(scores) == 0:
-        return
-
-    min_score = min(scores)
-    max_score = max(scores)
-
-    if min_score == max_score: 
-        for _ in range(len(scores)):
-            print("1.0")
-        return
-
-    for score in scores: 
-        print(round((score - min_score) / (max_score - min_score), 4))
+    n_scores = normalize_scores(scores)
 
 
 def weighted_search_command(query: str, alpha: float = DEFAULT_ALPHA, limit: int = DEFAULT_LIMIT) -> None:
